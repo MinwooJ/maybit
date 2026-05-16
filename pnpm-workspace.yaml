@@ -1,0 +1,8 @@
+packages:
+  - "bot"
+  - "dashboard"
+  - "shared"
+
+ignoredBuiltDependencies:
+  - sharp
+  - unrs-resolver

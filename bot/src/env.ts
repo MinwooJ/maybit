@@ -1,8 +1,14 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-const envPath = resolve(process.cwd(), '.env');
+const cwd = process.cwd();
 
-if (existsSync(envPath)) {
-  process.loadEnvFile(envPath);
+// Loaded in order — later files override earlier keys.
+// .env is the production / VM-deployed file (systemd EnvironmentFile).
+// .env.local is the local-dev override (gitignored, never deployed).
+for (const filename of ['.env', '.env.local']) {
+  const path = resolve(cwd, filename);
+  if (existsSync(path)) {
+    process.loadEnvFile(path);
+  }
 }

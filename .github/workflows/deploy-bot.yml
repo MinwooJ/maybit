@@ -1,0 +1,92 @@
+name: Deploy bot to Oracle VM
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'bot/**'
+      - 'shared/**'
+      - 'infra/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - '.github/workflows/deploy-bot.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-bot
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.24.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck shared + bot
+        run: pnpm --filter @maybit/shared --filter @maybit/bot typecheck
+
+  deploy:
+    needs: typecheck
+    if: vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup SSH
+        env:
+          ORACLE_SSH_KEY: ${{ secrets.ORACLE_SSH_KEY }}
+          ORACLE_HOST: ${{ secrets.ORACLE_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$ORACLE_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$ORACLE_HOST" >> ~/.ssh/known_hosts
+
+      - name: Rsync source to VM
+        env:
+          ORACLE_HOST: ${{ secrets.ORACLE_HOST }}
+          ORACLE_USER: ${{ secrets.ORACLE_USER }}
+          DEPLOY_PATH: ${{ secrets.ORACLE_DEPLOY_PATH }}
+        run: |
+          rsync -avz --delete \
+            --exclude='.git' \
+            --exclude='node_modules' \
+            --exclude='dashboard' \
+            --exclude='.next' \
+            --exclude='dist' \
+            --exclude='**/.env' \
+            --exclude='bot/data' \
+            ./ "${ORACLE_USER}@${ORACLE_HOST}:${DEPLOY_PATH}/"
+
+      - name: Install deps and restart bot
+        env:
+          ORACLE_HOST: ${{ secrets.ORACLE_HOST }}
+          ORACLE_USER: ${{ secrets.ORACLE_USER }}
+          DEPLOY_PATH: ${{ secrets.ORACLE_DEPLOY_PATH }}
+        run: |
+          ssh "${ORACLE_USER}@${ORACLE_HOST}" "bash -s" <<EOF
+            set -euxo pipefail
+            cd "${DEPLOY_PATH}"
+            corepack enable
+            corepack prepare pnpm@10.24.0 --activate
+            pnpm install --frozen-lockfile --filter @maybit/bot... --prod=false
+            sudo /bin/systemctl restart maybit-bot
+            sudo /bin/systemctl --no-pager status maybit-bot | head -20
+          EOF

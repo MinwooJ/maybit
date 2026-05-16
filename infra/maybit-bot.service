@@ -1,0 +1,33 @@
+[Unit]
+Description=maybit trading bot
+Documentation=https://github.com/MinwooJ/maybit
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/maybit
+EnvironmentFile=/opt/maybit/bot/.env
+Environment=NODE_ENV=production
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/home/ubuntu/.local/share/pnpm
+ExecStart=/opt/maybit/infra/start-bot.sh
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=maybit-bot
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/opt/maybit /home/ubuntu/.local /home/ubuntu/.cache
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=multi-user.target

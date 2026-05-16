@@ -42,3 +42,5 @@ coverage/
 # Cloudflare / Wrangler
 .wrangler/
 .dev.vars
+.open-next/
+cloudflare-env.d.ts

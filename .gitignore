@@ -1,5 +1,6 @@
-# oh-my-claudecode local state
+# Local AI/agent tooling state
 .omc/
+.claude/
 
 # Dependencies
 node_modules/

@@ -1,8 +1,11 @@
+import './env.js';
+
 import dayjs from 'dayjs';
 import timezone from 'dayjs/plugin/timezone.js';
 import utc from 'dayjs/plugin/utc.js';
 import { ConfigSchema } from '@maybit/shared';
 import { logger } from './logger.js';
+import { DISCORD_COLOR, notifyDiscord } from './notify/index.js';
 import { UpbitWsManager, fetchKrwMarkets } from './upbit/index.js';
 import type { UpbitTicker } from './upbit/index.js';
 
@@ -35,6 +38,18 @@ async function bootstrap(): Promise<void> {
     'fetched KRW markets',
   );
 
+  await notifyDiscord(null, [
+    {
+      title: '🟢 maybit bot started',
+      color: DISCORD_COLOR.success,
+      fields: [
+        { name: 'mode', value: defaultConfig.mode, inline: true },
+        { name: 'KRW markets', value: String(markets.length), inline: true },
+        { name: 'at (KST)', value: now(), inline: false },
+      ],
+    },
+  ]);
+
   const stats: TickerStats = {
     received: 0,
     distinct: new Set(),
@@ -65,20 +80,39 @@ async function bootstrap(): Promise<void> {
     );
   }, REPORT_INTERVAL_MS);
 
+  let shuttingDown = false;
   const shutdown = (signal: NodeJS.Signals): void => {
+    if (shuttingDown) return;
+    shuttingDown = true;
     logger.info({ signal, at: now() }, 'shutting down');
     clearInterval(report);
     ws.stop();
-    setTimeout(() => process.exit(0), 200);
+    notifyDiscord(null, [
+      {
+        title: '🔴 maybit bot stopped',
+        color: DISCORD_COLOR.warn,
+        fields: [
+          { name: 'signal', value: signal, inline: true },
+          { name: 'at (KST)', value: now(), inline: true },
+          { name: 'ticks received', value: String(stats.received), inline: true },
+        ],
+      },
+    ]).finally(() => process.exit(0));
   };
 
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
 
-  logger.info('bot running — Phase 0 PoC: WebSocket ticker stream only');
+  logger.info('bot running — Phase 0 PoC: WebSocket ticker stream + Discord lifecycle');
 }
 
 bootstrap().catch((err) => {
   logger.error({ err: (err as Error).message }, 'bootstrap failed');
-  process.exit(1);
+  notifyDiscord(null, [
+    {
+      title: '⚠️ maybit bot failed to start',
+      color: DISCORD_COLOR.critical,
+      description: (err as Error).message,
+    },
+  ]).finally(() => process.exit(1));
 });

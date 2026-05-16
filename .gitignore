@@ -1,0 +1,44 @@
+# oh-my-claudecode local state
+.omc/
+
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+.next/
+.turbo/
+out/
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# Local databases
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# OS / Editor
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# Test/coverage
+coverage/
+.nyc_output/
+
+# Cloudflare / Wrangler
+.wrangler/
+.dev.vars

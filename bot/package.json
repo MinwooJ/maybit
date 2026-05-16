@@ -16,10 +16,12 @@
     "dayjs": "^1.11.13",
     "pino": "^9.5.0",
     "pino-pretty": "^11.3.0",
+    "ws": "^8.18.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
+    "@types/ws": "^8.5.13",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0",
     "vitest": "^2.1.0"
